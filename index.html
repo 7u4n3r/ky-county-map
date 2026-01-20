@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Kentucky County Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .instruction {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 20px;
+            font-weight: 500;
+        }
+        
+        .map-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .map-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .county-dot {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.4);
+            border: 2px solid rgba(59, 130, 246, 0.8);
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+        
+        .county-dot:hover {
+            width: 60px;
+            height: 60px;
+            background: rgba(34, 197, 94, 0.7);
+            border: 3px solid rgba(34, 197, 94, 1);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+        }
+        
+        .county-label {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 10;
+        }
+        
+        .county-dot:hover .county-label {
+            display: block;
+        }
+        
+        .helper-text {
+            text-align: center;
+            margin-top: 30px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="instruction">
+            Click your county to find resources and share your experience
+        </div>
+        
+        <div class="map-container">
+            <img src="kentucky-map.png" 
+                 alt="Kentucky Counties Map" 
+                 id="map-image">
+            
+            <div id="county-dots"></div>
+        </div>
+        
+        <div class="helper-text">
+            Blue areas show counties where ABLE-KY is active
+        </div>
+    </div>
+
+    <script>
+        // County coordinates
+        const counties = {
+            // Western Kentucky
+            Fulton: { top: "85%", left: "5%" },
+            Hickman: { top: "75%", left: "8%" },
+            Carlisle: { top: "70%", left: "10%" },
+            Ballard: { top: "65%", left: "12%" },
+            McCracken: { top: "68%", left: "15%" },
+            Livingston: { top: "60%", left: "18%" },
+            Crittenden: { top: "55%", left: "20%" },
+            Union: { top: "45%", left: "8%" },
+            Henderson: { top: "40%", left: "15%" },
+            Webster: { top: "48%", left: "22%" },
+            
+            // West Central Kentucky
+            Hopkins: { top: "52%", left: "25%" },
+            Daviess: { top: "45%", left: "28%" },
+            McLean: { top: "48%", left: "28%" },
+            Muhlenberg: { top: "55%", left: "30%" },
+            Ohio: { top: "50%", left: "32%" },
+            Butler: { top: "58%", left: "35%" },
+            Grayson: { top: "55%", left: "38%" },
+            Edmonson: { top: "60%", left: "38%" },
+            
+            // South Central Kentucky
+            Logan: { top: "65%", left: "35%" },
+            Todd: { top: "70%", left: "32%" },
+            Christian: { top: "70%", left: "28%" },
+            Trigg: { top: "72%", left: "25%" },
+            Lyon: { top: "65%", left: "25%" },
+            Caldwell: { top: "62%", left: "25%" },
+            Calloway: { top: "68%", left: "20%" },
+            Graves: { top: "75%", left: "18%" },
+            Marshall: { top: "65%", left: "22%" },
+            Warren: { top: "62%", left: "40%" },
+            
+            // Central Kentucky
+            Hart: { top: "58%", left: "42%" },
+            Barren: { top: "65%", left: "45%" },
+            Hardin: { top: "52%", left: "42%" },
+            Larue: { top: "55%", left: "45%" },
+            Green: { top: "60%", left: "48%" },
+            Taylor: { top: "58%", left: "48%" },
+            Marion: { top: "55%", left: "50%" },
+            Nelson: { top: "50%", left: "48%" },
+            Washington: { top: "53%", left: "52%" },
+            Adair: { top: "65%", left: "50%" },
+            Casey: { top: "62%", left: "52%" },
+            Lincoln: { top: "60%", left: "55%" },
+            Boyle: { top: "58%", left: "55%" },
+            
+            // Louisville Metro Area
+            Jefferson: { top: "48%", left: "38%" },
+            Oldham: { top: "42%", left: "38%" },
+            Shelby: { top: "45%", left: "42%" },
+            Spencer: { top: "45%", left: "45%" },
+            Bullitt: { top: "52%", left: "40%" },
+            Henry: { top: "42%", left: "45%" },
+            Trimble: { top: "38%", left: "42%" },
+            
+            // Lexington Metro Area
+            Fayette: { top: "48%", left: "55%" },
+            Scott: { top: "42%", left: "52%" },
+            Woodford: { top: "45%", left: "52%" },
+            Jessamine: { top: "52%", left: "55%" },
+            Madison: { top: "55%", left: "58%" },
+            Clark: { top: "48%", left: "58%" },
+            Anderson: { top: "45%", left: "48%" },
+            
+            // Northern Kentucky
+            Kenton: { top: "15%", left: "58%" },
+            Campbell: { top: "18%", left: "62%" },
+            Boone: { top: "12%", left: "55%" },
+            Grant: { top: "25%", left: "55%" },
+            Gallatin: { top: "22%", left: "48%" },
+            Carroll: { top: "28%", left: "45%" },
+            Owen: { top: "32%", left: "48%" },
+            Pendleton: { top: "22%", left: "58%" },
+            
+            // Eastern Kentucky
+            Pike: { top: "62%", left: "92%" },
+            Knott: { top: "58%", left: "88%" },
+            Perry: { top: "62%", left: "85%" },
+            Letcher: { top: "65%", left: "88%" },
+            Carter: { top: "38%", left: "82%" },
+            Boyd: { top: "32%", left: "88%" },
+            Greenup: { top: "28%", left: "92%" },
+            Lawrence: { top: "40%", left: "88%" },
+            Floyd: { top: "52%", left: "90%" },
+            Whitley: { top: "75%", left: "75%" },
+            Knox: { top: "70%", left: "72%" },
+            Bell: { top: "78%", left: "75%" },
+            Harlan: { top: "78%", left: "80%" },
+            Leslie: { top: "68%", left: "78%" },
+            Clay: { top: "65%", left: "75%" }
+        };
+
+        // Create county dots
+        const dotsContainer = document.getElementById('county-dots');
+        
+        Object.entries(counties).forEach(([name, coords]) => {
+            const dot = document.createElement('div');
+            dot.className = 'county-dot';
+            dot.style.top = coords.top;
+            dot.style.left = coords.left;
+            
+            const label = document.createElement('div');
+            label.className = 'county-label';
+            label.textContent = name + ' County';
+            
+            dot.appendChild(label);
+            dot.onclick = () => handleCountyClick(name);
+            
+            dotsContainer.appendChild(dot);
+        });
+
+        // Handle county click
+        function handleCountyClick(county) {
+            // Change this URL to wherever you want to redirect
+            const url = `https://able-ky.org/county/${county.toLowerCase()}`;
+            window.location.href = url;
+            
+            // Or open in new tab:
+            // window.open(url, '_blank');
+            
+            // Or trigger a custom event:
+            // document.dispatchEvent(new CustomEvent('countySelected', { detail: { county } }));
+        }
+    </script>
+</body>
+</html>
